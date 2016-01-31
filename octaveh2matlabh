@@ -642,7 +642,7 @@ else
 
         if [ -n "$TEXINFO" ]; then
             TEXINFO="\input texinfo\n@setfilename ${INPUT_BASE_NAME%.*}\n\
-                "$(echo "$TEXINFO"|tail -n +3)"\n@bye";
+"$(echo "$TEXINFO"|tail -n +3)"\n@bye";
             if $MAKEINFO_INPUT_OPT; then
                 echo "$TEXINFO";
             fi;
