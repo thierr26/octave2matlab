@@ -1,0 +1,278 @@
+#!/bin/sh
+
+# Copyright (C) 2016 Thierry Rascle <thierr26@free.fr>
+# MIT license. Please refer to the LICENSE file.
+
+# -----------------------------------------------------------------------------
+
+# Prepends the argument with "FATAL ERROR: " and echoes it to standard error,
+# then terminates the script with exit status 1. If no argument or empty
+# argument given, echoes "FATAL_ERROR" to standard error then terminates the
+# script with exit status 1.
+#
+# ARGUMENT:
+# $1: Any string.
+fatal() {
+
+    local FATAL_ERROR="FATAL ERROR";
+    if [ $# -gt 0 ] && [ -n "$1" ]; then
+        echo "$FATAL_ERROR: $1">&2;
+    else
+        echo "$FATAL_ERROR">&2;
+    fi;
+    echo "Use \"$SCRIPT_PATH --help\" for documentation">&2;
+
+    exit 1;
+}
+
+# -----------------------------------------------------------------------------
+
+# Echoes the first argument being an executable command. Echoes nothing if none
+# of the arguments is an executable command.
+#
+# ARGUMENTS:
+# Any strings.
+echo_cmd() {
+    until [ $# -eq 0 ] || command -v "$1"; do
+        shift;
+    done;
+}
+
+# -----------------------------------------------------------------------------
+
+# Echoes the first argument being an executable command and returns with exit
+# status 0. If none of the arguments is an executable command, then terminates
+# the script with a call to function fatal and thus exit status 1.
+#
+# ARGUMENTS:
+# Any strings.
+echo_cmd_fatal() {
+
+    until [ $# -eq 0 ] || command -v "$1"; do
+        LAST_CMD="$1";
+        shift;
+    done;
+
+    if [ $# -eq 0 ]; then
+        if [ -n "$LAST_CMD" ]; then
+            fatal "$LAST_CMD does not seem to be installed.";
+        else
+            fatal;
+        fi;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Prints the documentation for the script to the standard output.
+#
+# ARGUMENT
+# $1: Script name.
+documentation() {
+
+    local SCRIPT_NAME="$1";
+    local FMT="fmt";
+    local CMD=$(echo_cmd_fatal "$FMT" cat);
+    if [ ${CMD##*/} = "$FMT" ] && [ -n "$(echo_cmd tput)" ]; then
+        CMD="fmt --width=$(tput cols)";
+    fi;
+
+    $CMD <<EOF
+Usage:
+
+    $SCRIPT_NAME
+
+    $SCRIPT_NAME -h|--help
+
+Description:
+
+    Test program for $OCTAVEH2MATLABH.
+
+Options:
+
+    -h, --help
+        Display this documentation and exit.
+
+See also:
+
+    $OCTAVEH2MATLABH, $OCTAVEH2MATLABHR
+EOF
+}
+
+# -----------------------------------------------------------------------------
+
+# Returns 0 if the argument starts with "-". Returns 1 otherwise.
+#
+# ARGUMENT
+# $1: Any string.
+has_hyphen_leader() {
+    if [ -n "$1" ] && [ -z "${1%%-*}" ]; then
+        return 0;
+    else
+        return 1;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Returns 0 if the argument starts with "--". Returns 1 otherwise.
+#
+# ARGUMENT
+# $1: Any string.
+has_double_hyphen_leader() {
+    if [ -n "$1" ] && [ -z ${1%%--*} ]; then
+        return 0;
+    else
+        return 1;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Is supposed to be called with all the arguments to the current script.
+#
+# Affects the following variables:
+#   HELP_OPT:                 true if the user has requested the printing of
+#                             the script documentation, false otherwise.
+#
+# An unrecognized option or an empty destination directory will cause the
+# script to terminate with a call to the fatal function and thus exit status 1.
+#
+# ARGUMENTS
+# All the arguments to the current script.
+process_args() {
+
+    HELP_OPT=false;
+
+    # Process the options.
+    local OPT_STRING;
+    local N;
+    local K;
+    local OPT;
+    local OPT_PROCESSED=false;
+    while ! $OPT_PROCESSED && [ $# -gt 0 ] \
+            && has_hyphen_leader "$1" \
+            && [ "$1" != "-" ]; do
+
+        OPT_STRING=${1#?}; # If $1 is "-abc" then $OPT_STRING is "abc".
+                           # If $1 is "--force" then $OPT_STRING is "-force".
+
+        if has_double_hyphen_leader "$1"; then
+            N=1;
+        else
+            N=${#OPT_STRING};
+        fi;
+
+        for K in $(seq 1 $N); do
+            if [ $N -gt 1 ]; then
+                OPT=${OPT_STRING%${OPT_STRING#?}}; # If $OPT_STRING is "abc" at
+                                                   # the beginning of the loop,
+                                                   # then $OPT is "a",
+                                                   # then "b", then "c".
+            else
+                OPT="$OPT_STRING";
+            fi;
+
+            case "-$OPT" in
+                --) OPT_PROCESSED=true;;
+                -h|--help) HELP_OPT=true;;
+                *) fatal "Unrecognized option: -$OPT"
+            esac;
+
+            if [ $N -gt 1 ]; then
+                OPT_STRING=${OPT_STRING#?};
+            fi;
+        done;
+
+        shift;
+    done;
+
+    # Process the other arguments.
+    if [ $# -gt 0 ]; then
+        fatal "Unexpected argument."
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Returns 0 if the argument is the name of a directory, otherwise calls the
+# fatal function and thus terminates the script with exit status 1.
+#
+# ARGUMENT
+# $1: A directory name.
+is_dir() {
+    if ! [ -d "$1" ]; then
+        fatal "$1 is not a directory.";
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Checks that the external programs needed by the script (except for
+# documentation) are available.
+dependency_check() {
+    echo_cmd_fatal readlink>/dev/null;
+    echo_cmd_fatal diff>/dev/null;
+    echo_cmd_fatal rm>/dev/null;
+    echo_cmd_fatal mkdir>/dev/null;
+    echo_cmd_fatal $O2MR>/dev/null;
+}
+
+# -----------------------------------------------------------------------------
+
+# Checks that:
+# - value of variable INPUTDIR is the name of a readable directory,
+# - value of variable EXPECTEDOUTPUTDIR is the name of a readable directory.
+sanity_check() {
+    is_dir "$INPUTDIR";
+    is_dir "$EXPECTEDOUTPUTDIR";
+}
+
+# -----------------------------------------------------------------------------
+
+set -o nounset # Causes the script to terminate whenever an uninitialized
+               # variable is used.
+
+set -o errexit # Causes the script to terminate whenever a statement returns a
+               # non-true value.
+
+# Get the path to the script.
+SCRIPT_PATH="$0";
+
+# Get the base name of the script.
+SCRIPT_BASE_NAME=$(basename "$SCRIPT_PATH");
+
+process_args "$@";
+
+OCTAVEH2MATLABHR=octaveh2matlabh_recursive;
+if $HELP_OPT; then
+    documentation $SCRIPT_BASE_NAME;
+else
+    I=test_input;
+    O=test_output;
+    E=expected_test_output;
+    ABS_SELF=$(readlink -f "$SCRIPT_PATH");
+    ABS_SELF_DIR="${ABS_SELF%/*}";
+    O2MR="${ABS_SELF_DIR%/*}/$OCTAVEH2MATLABHR";
+    INPUTDIR="$ABS_SELF_DIR/$I";
+    OUTPUTDIR="$ABS_SELF_DIR/$O";
+    EXPECTEDOUTPUTDIR="$ABS_SELF_DIR/$E";
+    dependency_check;
+    sanity_check;
+
+    rm -rf "$OUTPUTDIR";
+    mkdir -p "$OUTPUTDIR";
+    "$O2MR" -f "$INPUTDIR" "$OUTPUTDIR";
+
+    set +o errexit
+    diff --brief "$EXPECTEDOUTPUTDIR" "$OUTPUTDIR";
+    DIFF_EXIT_STATUS=$?;
+    set -o errexit
+    echo;
+
+    if [ "$DIFF_EXIT_STATUS" = "0" ]; then
+        echo "Test passed.";
+    else
+        echo "Test failed.";
+    fi;
+fi;

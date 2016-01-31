@@ -1,0 +1,338 @@
+#!/bin/sh
+
+# Copyright (C) 2016 Thierry Rascle <thierr26@free.fr>
+# MIT license. Please refer to the LICENSE file.
+
+# -----------------------------------------------------------------------------
+
+# Prepends the argument with "FATAL ERROR: " and echoes it to standard error,
+# then terminates the script with exit status 1. If no argument or empty
+# argument given, echoes "FATAL_ERROR" to standard error then terminates the
+# script with exit status 1.
+#
+# ARGUMENT:
+# $1: Any string.
+fatal() {
+
+    local FATAL_ERROR="FATAL ERROR";
+    if [ $# -gt 0 ] && [ -n "$1" ]; then
+        echo "$FATAL_ERROR: $1">&2;
+    else
+        echo "$FATAL_ERROR">&2;
+    fi;
+    echo "Use \"$SCRIPT_PATH --help\" for documentation">&2;
+
+    exit 1;
+}
+
+# -----------------------------------------------------------------------------
+
+# Echoes the first argument being an executable command. Echoes nothing if none
+# of the arguments is an executable command.
+#
+# ARGUMENTS:
+# Any strings.
+echo_cmd() {
+    until [ $# -eq 0 ] || command -v "$1"; do
+        shift;
+    done;
+}
+
+# -----------------------------------------------------------------------------
+
+# Echoes the first argument being an executable command and returns with exit
+# status 0. If none of the arguments is an executable command, then terminates
+# the script with a call to function fatal and thus exit status 1.
+#
+# ARGUMENTS:
+# Any strings.
+echo_cmd_fatal() {
+
+    until [ $# -eq 0 ] || command -v "$1"; do
+        LAST_CMD="$1";
+        shift;
+    done;
+
+    if [ $# -eq 0 ]; then
+        if [ -n "$LAST_CMD" ]; then
+            fatal "$LAST_CMD does not seem to be installed.";
+        else
+            fatal;
+        fi;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Prints the documentation for the script to the standard output.
+#
+# ARGUMENT
+# $1: Script name.
+documentation() {
+
+    local SCRIPT_NAME="$1";
+    local FMT="fmt";
+    local CMD=$(echo_cmd_fatal "$FMT" cat);
+    if [ ${CMD##*/} = "$FMT" ] && [ -n "$(echo_cmd tput)" ]; then
+        CMD="fmt --width=$(tput cols)";
+    fi;
+
+    $CMD <<EOF
+Usage:
+
+    $SCRIPT_NAME [OPTIONS] SOURCE_DIR [DEST_DIR]
+
+    $SCRIPT_NAME -h|--help
+
+Description:
+
+    Calls $OCTAVEH2MATLABH for every file with ".m" extension in source \
+directory and its subdirectories.  The subdirectory structure is duplicated \
+in destination directory.  Note that files and directories having a name \
+starting with "." are ignored.
+
+    One of the texi2any or makeinfo commands is used to process the texinfo \
+help section in the $OCTAVEH2MATLABH input files and produce a plain text \
+help section.  texi2any or makeinfo may write warning or error messages to \
+standard error.  By default, these messages are discarded.  If the -k or \
+--makeinfo-err option is used, then the messages are not discarded.
+
+    If the -f or --force option is used, then the output files are \
+overwritten without confirmation.
+
+    If the -q or --quiet option is used, then the processed files are not \
+listed on standard output.
+
+Options:
+
+    -k, --makeinfo-err
+        Do not discard makeinfo warning and error messages.
+
+    -f, --force
+        Overwrite output files without confirmation.
+
+    -q, --quiet
+        Do not list files on standard output.
+
+    -h, --help
+        Display this documentation and exit.
+
+See also:
+
+    $OCTAVEH2MATLABH
+EOF
+}
+
+# -----------------------------------------------------------------------------
+
+# Returns 0 if the argument starts with "-". Returns 1 otherwise.
+#
+# ARGUMENT
+# $1: Any string.
+has_hyphen_leader() {
+    if [ -n "$1" ] && [ -z "${1%%-*}" ]; then
+        return 0;
+    else
+        return 1;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Returns 0 if the argument starts with "--". Returns 1 otherwise.
+#
+# ARGUMENT
+# $1: Any string.
+has_double_hyphen_leader() {
+    if [ -n "$1" ] && [ -z ${1%%--*} ]; then
+        return 0;
+    else
+        return 1;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Is supposed to be called with all the arguments to the current script.
+#
+# Affects the following variables:
+#   HELP_OPT:                 true if the user has requested the printing of
+#                             the script documentation, false otherwise.
+#   QUIET_OPT:                true if the user does not want the files to be
+#                             listed on standard output.
+#   FORCE_OPT:                true if the user wants to overwrite the output
+#                             file without confirmation.
+#   MAKEINFO_ERR_OPT:         true if the user wants the makeinfo warnings and
+#                             errors not to be discarded.
+#   SOURCE:                   Source directory.
+#   DEST:                     Destination directory.
+#
+# An unrecognized option or an empty destination directory will cause the
+# script to terminate with a call to the fatal function and thus exit status 1.
+#
+# ARGUMENTS
+# All the arguments to the current script.
+process_args() {
+
+    FORCE_OPT=false;
+    MAKEINFO_ERR_OPT=false;
+    QUIET_OPT=false;
+    HELP_OPT=false;
+    DEST=$(pwd);
+
+    # Process the options.
+    local OPT_STRING;
+    local N;
+    local K;
+    local OPT;
+    local OPT_PROCESSED=false;
+    while ! $OPT_PROCESSED && [ $# -gt 0 ] \
+            && has_hyphen_leader "$1" \
+            && [ "$1" != "-" ]; do
+
+        OPT_STRING=${1#?}; # If $1 is "-abc" then $OPT_STRING is "abc".
+                           # If $1 is "--force" then $OPT_STRING is "-force".
+
+        if has_double_hyphen_leader "$1"; then
+            N=1;
+        else
+            N=${#OPT_STRING};
+        fi;
+
+        for K in $(seq 1 $N); do
+            if [ $N -gt 1 ]; then
+                OPT=${OPT_STRING%${OPT_STRING#?}}; # If $OPT_STRING is "abc" at
+                                                   # the beginning of the loop,
+                                                   # then $OPT is "a",
+                                                   # then "b", then "c".
+            else
+                OPT="$OPT_STRING";
+            fi;
+
+            case "-$OPT" in
+                --) OPT_PROCESSED=true;;
+                -h|--help) HELP_OPT=true;;
+                -f|--force) FORCE_OPT=true;;
+                -q|--quiet) QUIET_OPT=true;;
+                -k|--makeinfo-err) MAKEINFO_ERR_OPT=true;;
+                *) fatal "Unrecognized option: -$OPT"
+            esac;
+
+            if [ $N -gt 1 ]; then
+                OPT_STRING=${OPT_STRING#?};
+            fi;
+        done;
+
+        shift;
+    done;
+
+    # Process the other arguments.
+    if [ $# -gt 0 ]; then
+        if [ -z "$1" ]; then
+            fatal "The source directory argument must not be an empty string."
+        else
+            SOURCE="$1";
+            if [ $# -gt 1 ]; then
+                if [ -z "$2" ]; then
+                    fatal "The destination directory argument must not be an \
+empty string."
+                else
+                    DEST="$2";
+                fi;
+                if [ $# -gt 2 ]; then
+                    fatal "Too many arguments."
+                fi;
+            fi;
+        fi;
+    elif ! $HELP_OPT; then
+        fatal "Source directory argument missing."
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Returns 0 if the argument is the name of a directory, otherwise calls the
+# fatal function and thus terminates the script with exit status 1.
+#
+# ARGUMENT
+# $1: A directory name.
+is_dir() {
+    if ! [ -d "$1" ]; then
+        fatal "$1 is not a directory.";
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Checks that the external programs needed by the script (except for
+# documentation) are available.
+dependency_check() {
+    echo_cmd_fatal find>/dev/null;
+    echo_cmd_fatal readlink>/dev/null;
+    echo_cmd_fatal mkdir>/dev/null;
+    echo_cmd_fatal $O2M>/dev/null;
+}
+
+# -----------------------------------------------------------------------------
+
+# Checks that:
+# - value of variable SOURCE is the name of a readable directory,
+# - SOURCE and DEST are two different directory paths.
+#
+# Affects the following variables:
+#   ABS_SOURCE: Absolute path to source directory.
+#   ABS_DEST:   Absolute path to destination directory.
+sanity_check() {
+    is_dir "$SOURCE";
+    ABS_SOURCE=$(readlink -f "$SOURCE");
+    ABS_DEST=$(readlink -f "$DEST");
+    if [ "$ABS_DEST" = "$ABS_SOURCE" ]; then
+        fatal "Source and destination directories are the same: $ABS_SOURCE"
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+set -o nounset # Causes the script to terminate whenever an uninitialized
+               # variable is used.
+
+set -o errexit # Causes the script to terminate whenever a statement returns a
+               # non-true value.
+
+# Get the path to the script.
+SCRIPT_PATH="$0";
+
+# Get the base name of the script.
+SCRIPT_BASE_NAME=$(basename "$SCRIPT_PATH");
+
+process_args "$@";
+
+OCTAVEH2MATLABH=octaveh2matlabh;
+if $HELP_OPT; then
+    documentation $SCRIPT_BASE_NAME;
+else
+    ABS_SELF=$(readlink -f "$SCRIPT_PATH");
+    O2M="${ABS_SELF%/*}/$OCTAVEH2MATLABH";
+    dependency_check;
+    mkdir -p "$DEST";
+    sanity_check;
+
+    O2MOPT=" ";
+    if $FORCE_OPT; then
+        O2MOPT="$O2MOPT--force ";
+    fi;
+    if $MAKEINFO_ERR_OPT; then
+        O2MOPT="$O2MOPT--makeinfo-err ";
+    fi;
+
+    for D in $(find "$ABS_SOURCE" -type d -not -path '*/\.*'); do
+        D_PATH_TAIL="${D#$ABS_SOURCE}";
+        DE="$ABS_DEST$D_PATH_TAIL";
+        for F in $(find "$D" -type f -name "*.m" -not -path '*/\.*'); do
+            if ! $QUIET_OPT; then
+                echo "Processing ...${F#$ABS_SOURCE}";
+            fi;
+            "$O2M"$O2MOPT "$F" "$DE";
+        done;
+    done;
+fi;

@@ -1,0 +1,667 @@
+#!/bin/sh
+
+# Copyright (C) 2016 Thierry Rascle <thierr26@free.fr>
+# MIT license. Please refer to the LICENSE file.
+
+# -----------------------------------------------------------------------------
+
+# Prepends the argument with "FATAL ERROR: " and echoes it to standard error,
+# then terminates the script with exit status 1. If no argument or empty
+# argument given, echoes "FATAL_ERROR" to standard error then terminates the
+# script with exit status 1.
+#
+# ARGUMENT:
+# $1: Any string.
+fatal() {
+
+    local FATAL_ERROR="FATAL ERROR";
+    if [ $# -gt 0 ] && [ -n "$1" ]; then
+        echo "$FATAL_ERROR: $1">&2;
+    else
+        echo "$FATAL_ERROR">&2;
+    fi;
+    echo "Use \"$SCRIPT_PATH --help\" for documentation">&2;
+
+    exit 1;
+}
+
+# -----------------------------------------------------------------------------
+
+# Echoes the first argument being an executable command. Echoes nothing if none
+# of the arguments is an executable command.
+#
+# ARGUMENTS:
+# Any strings.
+echo_cmd() {
+    until [ $# -eq 0 ] || command -v "$1"; do
+        shift;
+    done;
+}
+
+# -----------------------------------------------------------------------------
+
+# Echoes the first argument being an executable command and returns with exit
+# status 0. If none of the arguments is an executable command, then terminates
+# the script with a call to function fatal and thus exit status 1.
+#
+# ARGUMENTS:
+# Any strings.
+echo_cmd_fatal() {
+
+    until [ $# -eq 0 ] || command -v "$1"; do
+        LAST_CMD="$1";
+        shift;
+    done;
+
+    if [ $# -eq 0 ]; then
+        if [ -n "$LAST_CMD" ]; then
+            fatal "$LAST_CMD does not seem to be installed.";
+        else
+            fatal;
+        fi;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Prints the documentation for the script to the standard output.
+#
+# ARGUMENT
+# $1: Script name.
+documentation() {
+
+    local SCRIPT_NAME="$1";
+    local FMT="fmt";
+    local CMD=$(echo_cmd_fatal "$FMT" cat);
+    if [ ${CMD##*/} = "$FMT" ] && [ -n "$(echo_cmd tput)" ]; then
+        CMD="fmt --width=$(tput cols)";
+    fi;
+
+    $CMD <<EOF
+Usage:
+
+    $SCRIPT_NAME [OPTIONS] OCT_M_FILE [DEST_DIR]
+
+    $SCRIPT_NAME -h|--help
+
+Description:
+
+    Turn an Octave style function file (M-file) to a Matlab style file.
+
+    The first argument is the Octave style function file.  If it is -, then \
+input is read from standard input.
+
+    The second argument is the directory in which $SCRIPT_NAME writes the \
+Matlab style file.  If it is omitted, then the Matlab style file is written \
+to the current working directory.
+
+    The primary action of $SCRIPT_NAME is to turn an Octave style M-file \
+header (with a copyright section and then a texinfo help section) into a \
+Matlab style header (with a plain text help section and then a copyright \
+section).
+
+    Note that if no texinfo help section is found in the Octave style \
+function file, then in the Matlab style file the copyright section is placed \
+at the end of the file.
+
+    You may want to read the following Web pages about the conventional \
+headers for Octave functions:
+
+        - www.gnu.org/software/octave/doc/interpreter/\
+Function-Headers.html
+
+        - www.gnu.org/software/octave/doc/interpreter/\
+Documentation-Tips.html
+
+    The secondary action of $SCRIPT_NAME is to slighly modify the body of the \
+function.  The modifications do not change the functional behavior of the \
+function.  The modifications are as follows:
+
+        - On the lines that contain only the word "end_try_catch", this word \
+is replaced with "end".  Leading blanks are preserved, trailing blanks are \
+discarded.
+
+        - Ditto for the words "endfor", "endfunction", "endif", "endswitch" \
+and "endwhile".
+
+        - On the lines that contain only a comment with one or more pound \
+signs ("#") used as comment leaders, the pound signs are substituted with a \
+single percent sign ("%").
+
+    Please be aware that the output file will not be a valid Matlab function \
+file if the input file makes use of other Octave specific language features.
+
+    One of the texi2any or makeinfo commands is used to process the texinfo \
+help section and produce a plain text help section.  texi2any or makeinfo may \
+write warning or error messages to standard error.  By default, these \
+messages are discarded.  If the -k or --makeinfo-err option is used, then the \
+messages are not discarded.
+
+    If the -t or --makeinfo-input option is used, then the input to makeinfo \
+is echoed to standard output.
+
+    If the -f or --force option is used, then the output file is overwritten \
+without confirmation.
+
+Options:
+
+    -k, --makeinfo-err
+        Do not discard makeinfo warning and error messages.
+
+    -t, --makeinfo-input
+        Write the makeinfo input to standard output.
+
+    -f, --force
+        Overwrite output file without confirmation.
+
+    -h, --help
+        Display this documentation and exit.
+EOF
+}
+
+# -----------------------------------------------------------------------------
+
+# Returns 0 if the argument starts with "-". Returns 1 otherwise.
+#
+# ARGUMENT
+# $1: Any string.
+has_hyphen_leader() {
+    if [ -n "$1" ] && [ -z "${1%%-*}" ]; then
+        return 0;
+    else
+        return 1;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Returns 0 if the argument starts with "--". Returns 1 otherwise.
+#
+# ARGUMENT
+# $1: Any string.
+has_double_hyphen_leader() {
+    if [ -n "$1" ] && [ -z ${1%%--*} ]; then
+        return 0;
+    else
+        return 1;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Returns the argument with the trailins slash removed (if any).
+#
+# ARGUMENT
+# $1: Any string.
+no_trailing_slash() {
+    if [ "$1" != "/" ]; then
+        echo "${1%/}";
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Is supposed to be called with all the arguments to the current script.
+#
+# Affects the following variables:
+#   HELP_OPT:                 true if the user has requested the printing of
+#                             the script documentation, false otherwise.
+#   FORCE_OPT:                true if the user wants to overwrite the output
+#                             file without confirmation.
+#   MAKEINFO_ERR_OPT:         true if the user wants the makeinfo warnings and
+#                             errors not to be discarded.
+#   MAKEINFO_INPUT_OPT:       true if the user wants the makeinfo input to be
+#                             written to standard output.
+#   SOURCE:                   Input file.
+#   DEST:                     Destination directory.
+#
+# An unrecognized option or an empty destination directory will cause the
+# script to terminate with a call to the fatal function and thus exit status 1.
+#
+# ARGUMENTS
+# All the arguments to the current script.
+process_args() {
+
+    FORCE_OPT=false;
+    MAKEINFO_ERR_OPT=false;
+    MAKEINFO_INPUT_OPT=false;
+    HELP_OPT=false;
+    DEST=$(pwd);
+
+    # Process the options.
+    local OPT_STRING;
+    local N;
+    local K;
+    local OPT;
+    local OPT_PROCESSED=false;
+    while ! $OPT_PROCESSED && [ $# -gt 0 ] \
+            && has_hyphen_leader "$1" \
+            && [ "$1" != "-" ]; do
+
+        OPT_STRING=${1#?}; # If $1 is "-abc" then $OPT_STRING is "abc".
+                           # If $1 is "--force" then $OPT_STRING is "-force".
+
+        if has_double_hyphen_leader "$1"; then
+            N=1;
+        else
+            N=${#OPT_STRING};
+        fi;
+
+        for K in $(seq 1 $N); do
+            if [ $N -gt 1 ]; then
+                OPT=${OPT_STRING%${OPT_STRING#?}}; # If $OPT_STRING is "abc" at
+                                                   # the beginning of the loop,
+                                                   # then $OPT is "a",
+                                                   # then "b", then "c".
+            else
+                OPT="$OPT_STRING";
+            fi;
+
+            case "-$OPT" in
+                --) OPT_PROCESSED=true;;
+                -h|--help) HELP_OPT=true;;
+                -f|--force) FORCE_OPT=true;;
+                -k|--makeinfo-err) MAKEINFO_ERR_OPT=true;;
+                -t|--makeinfo-input) MAKEINFO_INPUT_OPT=true;;
+                *) fatal "Unrecognized option: -$OPT"
+            esac;
+
+            if [ $N -gt 1 ]; then
+                OPT_STRING=${OPT_STRING#?};
+            fi;
+        done;
+
+        shift;
+    done;
+
+    # Process the other arguments.
+    if [ $# -gt 0 ]; then
+        if [ -z "$1" ]; then
+            fatal "The input file argument must not be an empty string."
+        else
+            if [ "$1" = "-" ]; then
+                SOURCE=;
+            else
+                SOURCE="$1";
+            fi;
+            if [ $# -gt 1 ]; then
+                if [ -z "$2" ]; then
+                    fatal "The destination directory argument must not be an \
+empty string."
+                else
+                    DEST=$(no_trailing_slash "$2");
+                fi;
+                if [ $# -gt 2 ]; then
+                    fatal "Too many arguments."
+                fi;
+            fi;
+        fi;
+    elif ! $HELP_OPT; then
+        fatal "Input file argument missing."
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Returns 0 if the argument is the name of a readable file, otherwise calls the
+# fatal function and thus terminates the script with exit status 1.
+#
+# ARGUMENT
+# $1: A file name.
+is_readable_file() {
+    if ! [ -f "$1" ]; then
+        fatal "$1 is not a file.";
+    elif ! [ -r "$1" ]; then
+        fatal "$1 is not a readable file.";
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Checks that the external programs needed by the script (except for
+# documentation) are available.
+#
+# Affects the following variables:
+#   MKINFO: tex2any or makeinfo.
+dependency_check() {
+    echo_cmd_fatal grep>/dev/null;
+    echo_cmd_fatal sed>/dev/null;
+    echo_cmd_fatal tail>/dev/null;
+    echo_cmd_fatal rm>/dev/null;
+    echo_cmd_fatal mkdir>/dev/null;
+    echo_cmd_fatal readlink>/dev/null;
+    echo_cmd_fatal file>/dev/null;
+    MKINFO=$(echo_cmd_fatal texi2any makeinfo);
+}
+
+# -----------------------------------------------------------------------------
+
+# Checks that:
+# - value of variable SOURCE is the name of a readable text file,
+# - SOURCE and DEST/SOURCE are two different file paths.
+sanity_check() {
+    local ABS_SOURCE;
+    local ABS_DEST_FILE;
+    if [ -n "$SOURCE" ]; then
+        is_readable_file "$SOURCE";
+        if [ $(file "$SOURCE"|grep -c "\<text\>") -eq 0 ]; then
+            fatal "Input file does not seem to be a text file: $SOURCE";
+        fi;
+        ABS_SOURCE=$(readlink -f "$SOURCE");
+        ABS_DEST_FILE=$(readlink -f "$DEST")/$(basename "$SOURCE");
+        if [ "$ABS_DEST_FILE" = "$ABS_SOURCE" ]; then
+            fatal "Input and output files are the same: $ABS_SOURCE"
+        fi;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Affects the following constants:
+#   BE: Regular expression for a blank line.
+#   CE: Regular expression for the copyright section opening line.
+#   TE: Regular expression for the texinfo section opening line.
+#   FE: Regular expression for the function signature line.
+#   AE: Regular expression for comment leaders.
+assign_reg_exp() {
+    BE="^[ \t]*$";
+    CE="^[#% \t]\+Copyright\s.\+$";
+    TE="^[#% \t]\+-\*-[ \t]*texinfo[ \t]*-\*-[ \t]*$";
+    FE="^[ \t]*function\s";
+    AE="^[#%]\+";
+}
+
+# -----------------------------------------------------------------------------
+
+# Affects the following variables:
+#   BLANK_LINE:           true if the current line is blank.
+#   COPYRIGHT_EXPECTED:   true if the next non blank line is supposed to be the
+#                         copyright section opening line.
+#   TEXINFO_EXPECTED:     true if the next non blank line is supposed to be the
+#                         texinfo section opening line.
+#   IN_COPYRIGHT_SECTION: true if the current line is in the copyright section.
+#   IN_TEXINFO_SECTION:   true if the current line is in the texinfo
+#                         documentation section.
+#   FUNC_SIGNATURE:       Empty while function signature line has not been
+#                         found, otherwise function signature line.
+#   FUNC_SIGNATURE_CONT:  true if function signature continues on next line.
+#   IN_FUNC_SIGNATURE:    true if the current line belongs to the function
+#                         signature.
+init_state_machine() {
+    COPYRIGHT_EXPECTED=true;
+    TEXINFO_EXPECTED=false;
+    IN_COPYRIGHT_SECTION=false;
+    IN_TEXINFO_SECTION=false;
+    FUNC_SIGNATURE=;
+    FUNC_SIGNATURE_CONT=false;
+    IN_FUNC_SIGNATURE=false;
+}
+
+# -----------------------------------------------------------------------------
+
+# Uses the regular expressions defined by function assign_reg_exp to analyse
+# variable L (current line of the input file) and updates the variables
+# that have been initialized by function init_state_machine.
+update_state_machine() {
+
+    local LL;
+
+    if [ $(echo "$L"|grep -c "$BE") -ne 0 ]; then
+        BLANK_LINE=true;
+    else
+        BLANK_LINE=false;
+    fi;
+
+    IN_FUNC_SIGNATURE=false;
+    if ! $BLANK_LINE; then
+        if $COPYRIGHT_EXPECTED || $TEXINFO_EXPECTED; then
+            if $COPYRIGHT_EXPECTED; then
+                if [ $(echo "$L"|grep -c "$CE") -ne 0 ]; then
+                    IN_COPYRIGHT_SECTION=true;
+                else
+                    TEXINFO_EXPECTED=true;
+                fi;
+                COPYRIGHT_EXPECTED=false;
+            fi;
+            if $TEXINFO_EXPECTED; then
+                if [ $(echo "$L"|grep -c "$TE") -ne 0 ]; then
+                    IN_TEXINFO_SECTION=true;
+                fi;
+                TEXINFO_EXPECTED=false;
+            fi;
+        elif [ $(echo "$L"|grep -c "$FE") -ne 0 ] \
+                && [ -z "$FUNC_SIGNATURE" ] || $FUNC_SIGNATURE_CONT; then
+            if [ $(echo "$L"|grep -c "\.\.\.") -ne 0 ]; then
+                LL=$(echo "$L"|sed 's/\.\.\..*$//');
+                FUNC_SIGNATURE_CONT=true;
+            else
+                LL="$L";
+                FUNC_SIGNATURE_CONT=false;
+            fi;
+            FUNC_SIGNATURE="$FUNC_SIGNATURE$LL";
+            IN_FUNC_SIGNATURE=true;
+        fi;
+    elif $IN_COPYRIGHT_SECTION; then
+        IN_COPYRIGHT_SECTION=false;
+        TEXINFO_EXPECTED=true;
+    elif $IN_TEXINFO_SECTION; then
+        IN_TEXINFO_SECTION=false;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Calls update_state_machine and affects the following variables:
+#   COPYRIGHT:            Copyright section (with function o2m applied to each
+#                         line).
+#   TEXINFO:              makeinfo input.
+#   BODY:                 Lines of code or comments that are not in the
+#                         function signature not in the copyright section and
+#                         not in the texinfo section (with function o2m applied
+#                         to each line).
+#   PREV_BODY_LINE_BLANK: true if the last found body line is blank.
+read_and_process_line() {
+    update_state_machine;
+
+    if $IN_COPYRIGHT_SECTION; then
+        COPYRIGHT="$COPYRIGHT\n"$(o2m "$L");
+    elif $IN_TEXINFO_SECTION; then
+        TEXINFO="$TEXINFO\n$(echo "$L"|sed "s/^## \?//")";
+    elif ! $IN_FUNC_SIGNATURE; then
+        if ! $BLANK_LINE || ! $PREV_BODY_LINE_BLANK; then
+            BODY="$BODY\n"$(o2m "$L");
+            PREV_BODY_LINE_BLANK=$BLANK_LINE;
+        fi;
+    fi;
+};
+
+# -----------------------------------------------------------------------------
+
+# Loops over the lines of the input file and affects the same variables as
+# read_and_process_line.
+read_input_file() {
+
+    assign_reg_exp;
+    init_state_machine;
+    COPYRIGHT=;
+    TEXINFO=
+    BODY=;
+    PREV_BODY_LINE_BLANK=true;
+    if [ -z "$SOURCE" ]; then
+        while IFS= read L; do
+            read_and_process_line;
+        done;
+    else
+        while IFS= read L; do
+            read_and_process_line;
+        done<$SOURCE;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Echoes the function name extracted from function signature line.
+#
+# ARGUMENT
+# $1: Function signature line.
+func_name() {
+    echo "$1" \
+        |sed "s/^[ \t]*function[ \t]\+//"|sed "s/.\+=[ \t]*//"|sed "s/(.*$//";
+}
+
+# -----------------------------------------------------------------------------
+
+# Echoes a warning to standard error if the two arguments are not identical.
+#
+# ARGUMENT
+# $1: Function name extracted from function signature line.
+# $2: Function source file base name.
+check_func_name() {
+    if [ "$1" != "${2%.*}" ]; then
+        echo "Warning: Function name ($1) does not match file name ($2)">&2;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Converts Octave style line of code to Matlab style line of code. Precisely:
+# - One or more "#" at the beginning of a line are substituted with a single
+#   "%" (leading blanks are also substituted).
+# - Lines containing only one of the following words are substituted with
+#   "end" (leading blanks are kept, trailing blanks are discarded):
+#   * end_try_catch
+#   * endfor
+#   * endfunction
+#   * endif
+#   * endswitch
+#   * endwhile
+#
+# ARGUMENT
+# $1: Octave style line of code.
+o2m() {
+    local END=end;
+    echo "$1"|sed "s/^\([ \t]*\)end_try_catch[ \t]*/\1$END/" \
+        |sed "s/^\([ \t]*\)endfor[ \t]*/\1$END/" \
+        |sed "s/^\([ \t]*\)endfunction[ \t]*/\1$END/" \
+        |sed "s/^\([ \t]*\)endif[ \t]*/\1$END/" \
+        |sed "s/^\([ \t]*\)endswitch[ \t]*/\1$END/" \
+        |sed "s/^\([ \t]*\)endwhile[ \t]*/\1$END/" \
+        |sed "s/^\([ \t]*\)#\+/%/";
+}
+
+# -----------------------------------------------------------------------------
+
+# Builds the overwrite authorization flag for $O. Affects:
+#   OVWRT_AUTHOR: true if the user authorizes to overwrite the output file or
+#                 if the output file does not exist.
+get_overwrite_authorization() {
+
+    OVWRT_AUTHOR=true;
+    if ! $FORCE_OPT && [ -e "$O" ]; then
+        if [ -z "$SOURCE" ]; then
+            fatal "$O exists. Use -f or --force option to force overwriting."
+        fi;
+        ANS_OK=false;
+        while ! $ANS_OK; do
+            echo -n "Overwrite $O (y/n) ? "
+            read ANS;
+            if [ "$ANS" = "y" ] || [ "$ANS" = "Y" ] \
+                    || [ "$ANS" = "n" ] || [ "$ANS" = "N" ]; then
+                ANS_OK=true;
+            fi;
+        done;
+        if [ "$ANS" = "n" ] || [ "$ANS" = "N" ]; then
+            OVWRT_AUTHOR=false;
+        fi;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Echoes the base name of the input file. If input is read from standard input,
+# then then echoes what would be the base name of the file if the input was a
+# M-file (based on the function signature). In case of mismatch between the
+# file name and function signature, a warning is issued. If input is read from
+# standard input and there is no function signature, then a fatal error is
+# issued.
+#
+# Affects:
+#   INPUT_BASE_NAME: Base name of the input file (based on real file name or on
+#                    function signature).
+get_input_base_name() {
+
+    local SIGNATURE_NAME=$(func_name "$FUNC_SIGNATURE");
+
+    if [ -z "$FUNC_SIGNATURE" ] && [ -z "$SOURCE" ]; then
+        fatal "Don't how to name the output file.";
+    fi;
+
+    if [ -z "$SOURCE" ]; then
+        INPUT_BASE_NAME="$SIGNATURE_NAME".m;
+    else
+        INPUT_BASE_NAME=$(basename "$SOURCE");
+        check_func_name "$SIGNATURE_NAME" "$INPUT_BASE_NAME";
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
+set -o nounset # Causes the script to terminate whenever an uninitialized
+               # variable is used.
+
+set -o errexit # Causes the script to terminate whenever a statement returns a
+               # non-true value.
+
+# Get the path to the script.
+SCRIPT_PATH="$0";
+
+# Get the base name of the script.
+SCRIPT_BASE_NAME=$(basename "$SCRIPT_PATH");
+
+process_args "$@";
+
+if $HELP_OPT; then
+    documentation $SCRIPT_BASE_NAME;
+else
+    dependency_check;
+    mkdir -p "$DEST";
+    sanity_check;
+    read_input_file;
+
+    get_input_base_name;
+
+    O="$DEST/$INPUT_BASE_NAME";
+    get_overwrite_authorization;
+    if $OVWRT_AUTHOR; then
+        rm -rf "$O";
+        if [ -n "$FUNC_SIGNATURE" ]; then
+            echo "$FUNC_SIGNATURE"|sed "s/[ \t]\+//g" \
+                |sed "s/^function/function /"\
+                |sed "s/=/ = /"|sed "s/,/, /">>"$O";
+        fi;
+
+        if [ -n "$TEXINFO" ]; then
+            TEXINFO="\input texinfo\n@setfilename ${INPUT_BASE_NAME%.*}\n\
+                "$(echo "$TEXINFO"|tail -n +3)"\n@bye";
+            if $MAKEINFO_INPUT_OPT; then
+                echo "$TEXINFO";
+            fi;
+            if $MAKEINFO_ERR_OPT; then
+                echo "$TEXINFO"|$MKINFO --plaintext|sed "s/^/%/">>"$O";
+            else
+                echo "$TEXINFO"|$MKINFO --plaintext 2>/dev/null|\
+                    sed "s/^/%/">>"$O";
+            fi;
+            if [ -n "$COPYRIGHT" ]; then
+                echo "$COPYRIGHT">>"$O";
+            fi;
+            echo "$BODY">>"$O";
+        else
+            echo "$BODY"|sed '1{/^$/d}'>>"$O";
+        fi;
+
+        if [ -z "$TEXINFO" ] && [ -n "$COPYRIGHT" ]; then
+            echo "$COPYRIGHT">>"$O";
+        fi;
+    fi;
+fi;
