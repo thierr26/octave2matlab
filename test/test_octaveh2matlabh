@@ -211,6 +211,7 @@ is_dir() {
 # Checks that the external programs needed by the script (except for
 # documentation) are available.
 dependency_check() {
+    echo_cmd_fatal basename>/dev/null;
     echo_cmd_fatal readlink>/dev/null;
     echo_cmd_fatal diff>/dev/null;
     echo_cmd_fatal rm>/dev/null;

@@ -4,6 +4,8 @@ function ret = test1
 %     Useless function.  Written only to test script octaveh2matlabh.
 %     Returns a boolean value.
 %
+%     See also: test2.
+%
 
 % Copyright (C) 2016 Thierry Rascle <thierr26@free.fr>
 % MIT license. Please refer to the LICENSE file.

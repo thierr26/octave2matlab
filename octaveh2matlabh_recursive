@@ -91,7 +91,7 @@ directory and its subdirectories.  The subdirectory structure is duplicated \
 in destination directory.  Note that files and directories having a name \
 starting with "." are ignored.
 
-    One of the texi2any or makeinfo commands is used to process the texinfo \
+    One of the texi2any or makeinfo commands is used to process the Texinfo \
 help section in the $OCTAVEH2MATLABH input files and produce a plain text \
 help section.  texi2any or makeinfo may write warning or error messages to \
 standard error.  By default, these messages are discarded.  If the -k or \
@@ -267,10 +267,12 @@ is_dir() {
 # Checks that the external programs needed by the script (except for
 # documentation) are available.
 dependency_check() {
+    echo_cmd_fatal basename>/dev/null;
     echo_cmd_fatal find>/dev/null;
     echo_cmd_fatal readlink>/dev/null;
     echo_cmd_fatal mkdir>/dev/null;
     echo_cmd_fatal $O2M>/dev/null;
+    echo_cmd_fatal octave>/dev/null;
 }
 
 # -----------------------------------------------------------------------------
@@ -289,6 +291,23 @@ sanity_check() {
     if [ "$ABS_DEST" = "$ABS_SOURCE" ]; then
         fatal "Source and destination directories are the same: $ABS_SOURCE"
     fi;
+}
+
+# -----------------------------------------------------------------------------
+
+# Echoes the path to the file containing the Octave documentation specific
+# Texinfo macros.
+macro_file() {
+
+    # Use Octave to get the path to the file containing the Octave
+    # documentation specific Texinfo macros.
+    set +o errexit
+    octave --eval "fprintf('%s\n', texi_macros_file);" 2>/dev/null;
+    if [ $? -ne 0 ]; then
+        fatal "Unable to find the Octave Texinfo macros file.";
+        echo B; ##
+    fi
+    set -o errexit
 }
 
 # -----------------------------------------------------------------------------
@@ -325,6 +344,7 @@ else
         O2MOPT="$O2MOPT--makeinfo-err ";
     fi;
 
+    MACRO_FILE="$(macro_file)";
     for D in $(find "$ABS_SOURCE" -type d -not -path '*/\.*'); do
         D_PATH_TAIL="${D#$ABS_SOURCE}";
         DE="$ABS_DEST$D_PATH_TAIL";
@@ -332,7 +352,7 @@ else
             if ! $QUIET_OPT; then
                 echo "Processing ...${F#$ABS_SOURCE}";
             fi;
-            "$O2M"$O2MOPT "$F" "$DE";
+            "$O2M"$O2MOPT--texinfo-macros-file "$MACRO_FILE" "$F" "$DE";
         done;
     done;
 fi;

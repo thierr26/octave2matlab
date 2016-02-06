@@ -15,7 +15,7 @@ make use of Octave specific language features other than:
           "endwhile" used to close the various control constructs.
 
 Their primary purpose is to turn Octave style M-file headers (with copyright
-sections and texinfo help sections) into Matlab style headers.
+sections and Texinfo help sections) into Matlab style headers.
 
 Read the documentations below for details.
 
@@ -43,11 +43,11 @@ Description:
     written to the current working directory.
 
     The primary action of octaveh2matlabh is to turn an Octave style M-file
-    header (with a copyright section and then a texinfo help section)
+    header (with a copyright section and then a Texinfo help section)
     into a Matlab style header (with a plain text help section and then a
     copyright section).
 
-    Note that if no texinfo help section is found in the Octave style function
+    Note that if no Texinfo help section is found in the Octave style function
     file, then in the Matlab style file the copyright section is placed at
     the end of the file.
 
@@ -77,11 +77,17 @@ Description:
     file if the input file makes use of other Octave specific language
     features.
 
-    One of the texi2any or makeinfo commands is used to process the texinfo
+    One of the texi2any or makeinfo commands is used to process the Texinfo
     help section and produce a plain text help section.  texi2any or makeinfo
     may write warning or error messages to standard error.  By default, these
     messages are discarded.  If the -k or --makeinfo-err option is used,
     then the messages are not discarded.
+
+    The present script needs to know the path to the file containing the
+    Octave documentation specific Texinfo macros.  By default, this path is
+    obtained by making Octave evaluate its texi_macros_file function and echo
+    the result.  Alternatively, the user can give the path to the file on the
+command line by using the -m or --texinfo-macros-file option.
 
     If the -t or --makeinfo-input option is used, then the input to makeinfo
     is echoed to standard output.
@@ -90,6 +96,9 @@ Description:
     without confirmation.
 
 Options:
+
+    -m FILE, --texinfo-macros-file FILE
+        use FILE as Texinfo macros file.
 
     -k, --makeinfo-err
         Do not discard makeinfo warning and error messages.
@@ -119,7 +128,7 @@ Description:
     in destination directory.  Note that files and directories having a name
     starting with "." are ignored.
 
-    One of the texi2any or makeinfo commands is used to process the texinfo
+    One of the texi2any or makeinfo commands is used to process the Texinfo
     help section in the octaveh2matlabh input files and produce a plain text
     help section.  texi2any or makeinfo may write warning or error messages
     to standard error.  By default, these messages are discarded.  If the

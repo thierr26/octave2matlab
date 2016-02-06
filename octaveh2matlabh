@@ -96,11 +96,11 @@ Matlab style file.  If it is omitted, then the Matlab style file is written \
 to the current working directory.
 
     The primary action of $SCRIPT_NAME is to turn an Octave style M-file \
-header (with a copyright section and then a texinfo help section) into a \
+header (with a copyright section and then a Texinfo help section) into a \
 Matlab style header (with a plain text help section and then a copyright \
 section).
 
-    Note that if no texinfo help section is found in the Octave style \
+    Note that if no Texinfo help section is found in the Octave style \
 function file, then in the Matlab style file the copyright section is placed \
 at the end of the file.
 
@@ -131,11 +131,17 @@ single percent sign ("%").
     Please be aware that the output file will not be a valid Matlab function \
 file if the input file makes use of other Octave specific language features.
 
-    One of the texi2any or makeinfo commands is used to process the texinfo \
+    One of the texi2any or makeinfo commands is used to process the Texinfo \
 help section and produce a plain text help section.  texi2any or makeinfo may \
 write warning or error messages to standard error.  By default, these \
 messages are discarded.  If the -k or --makeinfo-err option is used, then the \
 messages are not discarded.
+
+    The present script needs to know the path to the file containing the \
+Octave documentation specific Texinfo macros.  By default, this path is \
+obtained by making Octave evaluate its texi_macros_file function and echo \
+the result.  Alternatively, the user can give the path to the file on the
+command line by using the -m or --texinfo-macros-file option.
 
     If the -t or --makeinfo-input option is used, then the input to makeinfo \
 is echoed to standard output.
@@ -144,6 +150,9 @@ is echoed to standard output.
 without confirmation.
 
 Options:
+
+    -m FILE, --texinfo-macros-file FILE
+        use FILE as Texinfo macros file.
 
     -k, --makeinfo-err
         Do not discard makeinfo warning and error messages.
@@ -206,6 +215,8 @@ no_trailing_slash() {
 # Affects the following variables:
 #   HELP_OPT:                 true if the user has requested the printing of
 #                             the script documentation, false otherwise.
+#   MACROS_FILE_OPT:          Path to the file containing the Octave
+#                             documentation specific Texinfo macros.
 #   FORCE_OPT:                true if the user wants to overwrite the output
 #                             file without confirmation.
 #   MAKEINFO_ERR_OPT:         true if the user wants the makeinfo warnings and
@@ -222,6 +233,7 @@ no_trailing_slash() {
 # All the arguments to the current script.
 process_args() {
 
+    MACROS_FILE_OPT=;
     FORCE_OPT=false;
     MAKEINFO_ERR_OPT=false;
     MAKEINFO_INPUT_OPT=false;
@@ -260,6 +272,7 @@ process_args() {
             case "-$OPT" in
                 --) OPT_PROCESSED=true;;
                 -h|--help) HELP_OPT=true;;
+                -m|--texinfo-macros-file) MACROS_FILE_OPT="$2"; shift;;
                 -f|--force) FORCE_OPT=true;;
                 -k|--makeinfo-err) MAKEINFO_ERR_OPT=true;;
                 -t|--makeinfo-input) MAKEINFO_INPUT_OPT=true;;
@@ -318,12 +331,13 @@ is_readable_file() {
 
 # -----------------------------------------------------------------------------
 
-# Checks that the external programs needed by the script (except for
-# documentation) are available.
+# Checks that the external programs needed by the script (except Octave and the
+# programs needed for script documentation) are available.
 #
 # Affects the following variables:
 #   MKINFO: tex2any or makeinfo.
 dependency_check() {
+    echo_cmd_fatal basename>/dev/null;
     echo_cmd_fatal grep>/dev/null;
     echo_cmd_fatal sed>/dev/null;
     echo_cmd_fatal tail>/dev/null;
@@ -360,7 +374,7 @@ sanity_check() {
 # Affects the following constants:
 #   BE: Regular expression for a blank line.
 #   CE: Regular expression for the copyright section opening line.
-#   TE: Regular expression for the texinfo section opening line.
+#   TE: Regular expression for the Texinfo section opening line.
 #   FE: Regular expression for the function signature line.
 #   AE: Regular expression for comment leaders.
 assign_reg_exp() {
@@ -378,9 +392,9 @@ assign_reg_exp() {
 #   COPYRIGHT_EXPECTED:   true if the next non blank line is supposed to be the
 #                         copyright section opening line.
 #   TEXINFO_EXPECTED:     true if the next non blank line is supposed to be the
-#                         texinfo section opening line.
+#                         Texinfo section opening line.
 #   IN_COPYRIGHT_SECTION: true if the current line is in the copyright section.
-#   IN_TEXINFO_SECTION:   true if the current line is in the texinfo
+#   IN_TEXINFO_SECTION:   true if the current line is in the Texinfo
 #                         documentation section.
 #   FUNC_SIGNATURE:       Empty while function signature line has not been
 #                         found, otherwise function signature line.
@@ -457,7 +471,7 @@ update_state_machine() {
 #   TEXINFO:              makeinfo input.
 #   BODY:                 Lines of code or comments that are not in the
 #                         function signature not in the copyright section and
-#                         not in the texinfo section (with function o2m applied
+#                         not in the Texinfo section (with function o2m applied
 #                         to each line).
 #   PREV_BODY_LINE_BLANK: true if the last found body line is blank.
 read_and_process_line() {
@@ -606,6 +620,43 @@ get_input_base_name() {
 
 # -----------------------------------------------------------------------------
 
+# Get and check the path to the file containing the Octave documentation
+# specific Texinfo macros. Uses variable MACROS_FILE_OPT which whas already
+# been initialized and may be non empty if the user has given the file path on
+# the command line.
+#
+# Affects:
+#   MACROS_FILE_BASE_NAME: Base name of the macros file.
+#   MACROS_FILE_DIR: Directory containing the macros file.
+find_and_check_macro_file() {
+
+    if [ -z "$MACROS_FILE_OPT" ]; then
+        # User has not given the file path on the command line.
+
+        # Use Octave to get the path to the file containing the Octave
+        # documentation specific Texinfo macros.
+        echo_cmd_fatal octave>/dev/null;
+        set +o errexit
+        F=texi_macros_file;
+        MACROS_FILE_OPT="$(octave --eval "fprintf('%s\n', $F);" 2>/dev/null)";
+        set -o errexit
+    fi;
+
+    if [ -z "$MACROS_FILE_OPT" ]; then
+        fatal "Unable to find the Octave Texinfo macros file.";
+    else
+        is_readable_file "$MACROS_FILE_OPT";
+    fi;
+
+    MACROS_FILE_BASE_NAME=${MACROS_FILE_OPT##*/};
+    MACROS_FILE_DIR=${MACROS_FILE_OPT%/*};
+    if [ -z $MACROS_FILE_DIR ]; then
+        MACROS_FILE_DIR=/;
+    fi;
+}
+
+# -----------------------------------------------------------------------------
+
 set -o nounset # Causes the script to terminate whenever an uninitialized
                # variable is used.
 
@@ -641,11 +692,18 @@ else
         fi;
 
         if [ -n "$TEXINFO" ]; then
-            TEXINFO="\input texinfo\n@setfilename ${INPUT_BASE_NAME%.*}\n\
+
+            find_and_check_macro_file;
+
+            TEXINFO="\input Texinfo\n\
+@include $MACROS_FILE_BASE_NAME\n\
+@setfilename ${INPUT_BASE_NAME%.*}\n\
 "$(echo "$TEXINFO"|tail -n +3)"\n@bye";
+
             if $MAKEINFO_INPUT_OPT; then
                 echo "$TEXINFO";
             fi;
+            MKINFO="$MKINFO -I $MACROS_FILE_DIR";
             if $MAKEINFO_ERR_OPT; then
                 echo "$TEXINFO"|$MKINFO --plaintext|sed "s/^/%/">>"$O";
             else

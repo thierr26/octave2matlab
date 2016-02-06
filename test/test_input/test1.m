@@ -7,6 +7,8 @@
 ## Useless function.  Written only to test script octaveh2matlabh. Returns a
 ## boolean value.
 ##
+## @seealso{test2}
+##
 ## @end deftypefn
 
 ## Author: Thierry Rascle <thierr26@free.fr>
