@@ -345,10 +345,11 @@ else
     fi;
 
     MACRO_FILE="$(macro_file)";
+    DPTH="-maxdepth 1";
     for D in $(find "$ABS_SOURCE" -type d -not -path '*/\.*'); do
         D_PATH_TAIL="${D#$ABS_SOURCE}";
         DE="$ABS_DEST$D_PATH_TAIL";
-        for F in $(find "$D" -type f -name "*.m" -not -path '*/\.*'); do
+        for F in $(find "$D" $DPTH -type f -name "*.m" -not -path '*/\.*'); do
             if ! $QUIET_OPT; then
                 echo "Processing ...${F#$ABS_SOURCE}";
             fi;
