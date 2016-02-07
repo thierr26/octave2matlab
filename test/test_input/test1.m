@@ -34,6 +34,7 @@ function ret = test1
         endif
 
         switch n
+            # Bla.
             case 1
                 ret = ~ret;
         endswitch

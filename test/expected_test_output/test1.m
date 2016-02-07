@@ -31,6 +31,7 @@ function ret = test1
         end
 
         switch n
+            % Bla.
             case 1
                 ret = ~ret;
         end
