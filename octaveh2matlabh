@@ -426,9 +426,16 @@ update_state_machine() {
         BLANK_LINE=false;
     fi;
 
+    if [ $(echo "$L"|grep -c "$FE") -ne 0 ]; then
+        FUNC_SIGNATURE_LINE=true;
+    else
+        FUNC_SIGNATURE_LINE=false;
+    fi;
+
     IN_FUNC_SIGNATURE=false;
     if ! $BLANK_LINE; then
-        if $COPYRIGHT_EXPECTED || $TEXINFO_EXPECTED; then
+        if $COPYRIGHT_EXPECTED || $TEXINFO_EXPECTED \
+                && ! $FUNC_SIGNATURE_LINE; then
             if $COPYRIGHT_EXPECTED; then
                 if [ $(echo "$L"|grep -c "$CE") -ne 0 ]; then
                     IN_COPYRIGHT_SECTION=true;
@@ -443,7 +450,7 @@ update_state_machine() {
                 fi;
                 TEXINFO_EXPECTED=false;
             fi;
-        elif [ $(echo "$L"|grep -c "$FE") -ne 0 ] \
+        elif $FUNC_SIGNATURE_LINE \
                 && [ -z "$FUNC_SIGNATURE" ] || $FUNC_SIGNATURE_CONT; then
             if [ $(echo "$L"|grep -c "\.\.\.") -ne 0 ]; then
                 LL=$(echo "$L"|sed 's/\.\.\..*$//');
@@ -519,8 +526,7 @@ read_input_file() {
 # ARGUMENT
 # $1: Function signature line.
 func_name() {
-    echo "$1" \
-        |sed "s/^[ \t]*function[ \t]\+//"|sed "s/.\+=[ \t]*//"|sed "s/(.*$//";
+    echo "$1"|sed "s/[ \t]*(.*$//"|sed "s/.*\(\<.\+\>\)$/\1/";
 }
 
 # -----------------------------------------------------------------------------
