@@ -509,11 +509,11 @@ read_input_file() {
     BODY=;
     PREV_BODY_LINE_BLANK=true;
     if [ -z "$SOURCE" ]; then
-        while IFS= read L; do
+        while IFS= read -r L; do
             read_and_process_line;
         done;
     else
-        while IFS= read L; do
+        while IFS= read -r L; do
             read_and_process_line;
         done<$SOURCE;
     fi;

@@ -35,6 +35,7 @@ function ret = test1
             case 1
                 ret = ~ret;
         end
+        fs = '\';
 
     catch
         ret = false;
