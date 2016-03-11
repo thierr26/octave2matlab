@@ -698,7 +698,7 @@ else
         if [ -n "$FUNC_SIGNATURE" ]; then
             echo "$FUNC_SIGNATURE"|sed "s/[ \t]\+//g" \
                 |sed "s/^function/function /"\
-                |sed "s/=/ = /"|sed "s/,/, /">>"$O";
+                |sed "s/=/ = /"|sed "s/,/, /g">>"$O";
         fi;
 
         if [ -n "$TEXINFO" ]; then
