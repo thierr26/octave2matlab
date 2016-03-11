@@ -48,6 +48,7 @@ echo_cmd() {
 # Any strings.
 echo_cmd_fatal() {
 
+    local LAST_CMD;
     until [ $# -eq 0 ] || command -v "$1"; do
         LAST_CMD="$1";
         shift;
@@ -580,6 +581,7 @@ o2m() {
 #                 if the output file does not exist.
 get_overwrite_authorization() {
 
+    local ANS;
     OVWRT_AUTHOR=true;
     if ! $FORCE_OPT && [ -e "$O" ]; then
         if [ -z "$SOURCE" ]; then
