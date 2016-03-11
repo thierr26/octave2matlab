@@ -141,7 +141,7 @@ messages are not discarded.
     The present script needs to know the path to the file containing the \
 Octave documentation specific Texinfo macros.  By default, this path is \
 obtained by making Octave evaluate its texi_macros_file function and echo \
-the result.  Alternatively, the user can give the path to the file on the
+the result.  Alternatively, the user can give the path to the file on the \
 command line by using the -m or --texinfo-macros-file option.
 
     If the -t or --makeinfo-input option is used, then the input to makeinfo \
