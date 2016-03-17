@@ -124,9 +124,9 @@ Usage:
 Description:
 
     Calls octaveh2matlabh for every file with ".m" extension in source
-    directory and its subdirectories.  The subdirectory structure is duplicated
-    in destination directory.  Note that files and directories having a name
-    starting with "." are ignored.
+    directory and its subdirectories, and cp for the other files.  The
+    subdirectory structure is duplicated in destination directory.  Note that
+    files and directories having a name starting with "." are ignored.
 
     One of the texi2any or makeinfo commands is used to process the Texinfo
     help section in the octaveh2matlabh input files and produce a plain text

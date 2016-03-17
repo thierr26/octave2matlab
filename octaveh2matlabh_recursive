@@ -87,9 +87,9 @@ Usage:
 Description:
 
     Calls $OCTAVEH2MATLABH for every file with ".m" extension in source \
-directory and its subdirectories.  The subdirectory structure is duplicated \
-in destination directory.  Note that files and directories having a name \
-starting with "." are ignored.
+directory and its subdirectories, and cp for the other files.  The \
+subdirectory structure is duplicated in destination directory.  Note that \
+files and directories having a name starting with "." are ignored.
 
     One of the texi2any or makeinfo commands is used to process the Texinfo \
 help section in the $OCTAVEH2MATLABH input files and produce a plain text \
@@ -271,6 +271,7 @@ dependency_check() {
     echo_cmd_fatal find>/dev/null;
     echo_cmd_fatal readlink>/dev/null;
     echo_cmd_fatal mkdir>/dev/null;
+    echo_cmd_fatal cp>/dev/null;
     echo_cmd_fatal $O2M>/dev/null;
     echo_cmd_fatal octave>/dev/null;
 }
@@ -339,6 +340,9 @@ else
     O2MOPT=" ";
     if $FORCE_OPT; then
         O2MOPT="$O2MOPT--force ";
+        CPOPT=;
+    else
+        CPOPT="-i";
     fi;
     if $MAKEINFO_ERR_OPT; then
         O2MOPT="$O2MOPT--makeinfo-err ";
@@ -349,11 +353,19 @@ else
     for D in $(find "$ABS_SOURCE" -type d -not -path '*/\.*'); do
         D_PATH_TAIL="${D#$ABS_SOURCE}";
         DE="$ABS_DEST$D_PATH_TAIL";
+        mkdir -p "$DE";
         for F in $(find "$D" $DPTH -type f -name "*.m" -not -path '*/\.*'); do
             if ! $QUIET_OPT; then
                 echo "Processing ...${F#$ABS_SOURCE}";
             fi;
             "$O2M"$O2MOPT--texinfo-macros-file "$MACRO_FILE" "$F" "$DE";
+        done;
+        for F in $(find "$D" $DPTH -type f -not -name "*.m" \
+                -not -path '*/\.*'); do
+            if ! $QUIET_OPT; then
+                echo "Copying ...${F#$ABS_SOURCE}";
+            fi;
+            cp $CPOPT "$F" "$DE/${F##*/}";
         done;
     done;
 fi;
