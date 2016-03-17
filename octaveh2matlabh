@@ -513,12 +513,14 @@ read_input_file() {
         while IFS= read -r L; do
             L=$(printf "%s\n" "$L"|sed "s/\\\\n/\\\\\\\\\\\\\\\\n/g");
             L=$(printf "%s\n" "$L"|sed "s/\\\\t/\\\\\\\\\\\\\\\\t/g");
+            L=$(printf "%s\n" "$L"|sed "s/\\\\b/\\\\\\\\\\\\\\\\b/g");
             read_and_process_line;
         done;
     else
         while IFS= read -r L; do
             L=$(printf "%s\n" "$L"|sed "s/\\\\n/\\\\\\\\\\\\\\\\n/g");
             L=$(printf "%s\n" "$L"|sed "s/\\\\t/\\\\\\\\\\\\\\\\t/g");
+            L=$(printf "%s\n" "$L"|sed "s/\\\\b/\\\\\\\\\\\\\\\\b/g");
             read_and_process_line;
         done<$SOURCE;
     fi;
