@@ -120,6 +120,12 @@ Options:
 See also:
 
     $OCTAVEH2MATLABH
+
+Known bugs:
+
+    - When a sequence like "\n", "\t" or "\b" appears in the Texinfo help \
+section of an Octave function file, then it is interpreted.  For example \
+"\t" becomes a tabulation character in the output file.
 EOF
 }
 

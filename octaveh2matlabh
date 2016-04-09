@@ -166,6 +166,12 @@ Options:
 
     -h, --help
         Display this documentation and exit.
+
+Known bugs:
+
+    - When a sequence like "\n", "\t" or "\b" appears in the Texinfo help \
+section of an Octave function file, then it is interpreted.  For example \
+"\t" becomes a tabulation character in the output file.
 EOF
 }
 
@@ -359,7 +365,7 @@ sanity_check() {
     local ABS_DEST_FILE;
     if [ -n "$SOURCE" ]; then
         is_readable_file "$SOURCE";
-        if [ $(file "$SOURCE"|grep -c "\<text\>") -eq 0 ]; then
+        if [ $(file --mime "$SOURCE"|grep -c "\<text\>") -eq 0 ]; then
             fatal "Input file does not seem to be a text file: $SOURCE";
         fi;
         ABS_SOURCE=$(readlink -f "$SOURCE");

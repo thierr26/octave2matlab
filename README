@@ -17,9 +17,10 @@ make use of Octave specific language features other than:
 Their primary purpose is to turn Octave style M-file headers (with copyright
 sections and Texinfo help sections) into Matlab style headers.
 
-Read the documentations below for details.
+Please read the documentations below for details.
 
 The scripts have been validated on a Debian GNU/Linux system, with dash as
+/bin/sh.  Some testing has proven that they do NOT work properly with bash as
 /bin/sh.
 
 DOCUMENTATION FOR SCRIPT octaveh2matlabh
@@ -84,10 +85,10 @@ Description:
     then the messages are not discarded.
 
     The present script needs to know the path to the file containing the
-    Octave documentation specific Texinfo macros.  By default, this path is
-    obtained by making Octave evaluate its texi_macros_file function and echo
-    the result.  Alternatively, the user can give the path to the file on the
-    command line by using the -m or --texinfo-macros-file option.
+    Octave documentation specific Texinfo macros.  By default, this path
+    is obtained by making Octave evaluate its texi_macros_file function and
+    echo the result.  Alternatively, the user can give the path to the file
+    on the command line by using the -m or --texinfo-macros-file option.
 
     If the -t or --makeinfo-input option is used, then the input to makeinfo
     is echoed to standard output.
@@ -111,6 +112,12 @@ Options:
 
     -h, --help
         Display this documentation and exit.
+
+Known bugs:
+
+    - When a sequence like "\n", "\t" or "\b" appears in the Texinfo help
+    section of an Octave function file, then it is interpreted.  For example
+    "\t" becomes a tabulation character in the output file.
 
 DOCUMENTATION FOR SCRIPT octaveh2matlabh_recursive
 --------------------------------------------------
@@ -157,6 +164,12 @@ Options:
 See also:
 
     octaveh2matlabh
+
+Known bugs:
+
+    - When a sequence like "\n", "\t" or "\b" appears in the Texinfo help
+    section of an Octave function file, then it is interpreted.  For example
+    "\t" becomes a tabulation character in the output file.
 
 TEST PROGRAM
 ------------
