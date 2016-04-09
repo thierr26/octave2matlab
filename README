@@ -19,6 +19,12 @@ sections and Texinfo help sections) into Matlab style headers.
 
 Please read the documentations below for details.
 
+If you use the scripts with the -k or --makeinfo-err option, you may want to
+"grep out" the warnings about entries being outside of any node.  You can
+include a grep command in aliases, see this file for an example:
+
+https://github.com/thierr26/thierr26_bash_config/blob/master/for_a_user/.bashrc_octave2matlab
+
 The scripts have been validated on a Debian GNU/Linux system, with dash as
 /bin/sh.  Some testing has proven that they do NOT work properly with bash as
 /bin/sh.
