@@ -72,7 +72,9 @@ documentation() {
 
     local SCRIPT_NAME="$1";
     local FMT="fmt";
-    local CMD=$(echo_cmd_fatal "$FMT" cat);
+    local CMDE="echo_cmd_fatal $FMT cat";
+    $CMDE>/dev/null;
+    local CMD=$($CMDE);
     if [ ${CMD##*/} = "$FMT" ] && [ -n "$(echo_cmd tput)" ]; then
         CMD="fmt --width=$(tput cols)";
     fi;

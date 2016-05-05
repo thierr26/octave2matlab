@@ -73,7 +73,9 @@ documentation() {
 
     local SCRIPT_NAME="$1";
     local FMT="fmt";
-    local CMD=$(echo_cmd_fatal "$FMT" cat);
+    local CMDE="echo_cmd_fatal $FMT cat";
+    $CMDE>/dev/null;
+    local CMD=$($CMDE);
     if [ ${CMD##*/} = "$FMT" ] && [ -n "$(echo_cmd tput)" ]; then
         CMD="fmt --width=$(tput cols)";
     fi;
@@ -627,7 +629,7 @@ get_input_base_name() {
     local SIGNATURE_NAME=$(func_name "$FUNC_SIGNATURE");
 
     if [ -z "$FUNC_SIGNATURE" ] && [ -z "$SOURCE" ]; then
-        fatal "Don't how to name the output file.";
+        fatal "Don't know how to name the output file.";
     fi;
 
     if [ -z "$SOURCE" ]; then
