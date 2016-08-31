@@ -660,7 +660,8 @@ find_and_check_macro_file() {
         echo_cmd_fatal octave>/dev/null;
         set +o errexit
         F=texi_macros_file;
-        MACROS_FILE_OPT="$(octave --eval "fprintf('%s\n', $F);" 2>/dev/null)";
+        MACROS_FILE_OPT="$(octave --norc \
+            --eval "fprintf('%s\n', $F);" 2>/dev/null)";
         set -o errexit
     fi;
 

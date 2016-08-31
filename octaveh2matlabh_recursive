@@ -311,10 +311,9 @@ macro_file() {
     # Use Octave to get the path to the file containing the Octave
     # documentation specific Texinfo macros.
     set +o errexit
-    octave --eval "fprintf('%s\n', texi_macros_file);" 2>/dev/null;
+    octave --norc --eval "fprintf('%s\n', texi_macros_file);" 2>/dev/null;
     if [ $? -ne 0 ]; then
         fatal "Unable to find the Octave Texinfo macros file.";
-        echo B; ##
     fi
     set -o errexit
 }
