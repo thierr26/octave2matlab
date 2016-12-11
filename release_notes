@@ -1,2 +1,10 @@
+v1.0.1
+
+* When invoking Octave to get the Texinfo macros file, option --norc is now
+  used to avoid running the Octave startup files. This prevents an error from
+  occurring if an Octave startup files outputs some text.
+
+==============================================================================
 v1.0.0
-Initial release.
+
+* Initial release.
