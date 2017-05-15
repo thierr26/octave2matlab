@@ -657,7 +657,7 @@ find_and_check_macro_file() {
 
         # Use Octave to get the path to the file containing the Octave
         # documentation specific Texinfo macros.
-        echo_cmd_fatal octave>/dev/null;
+        echo_cmd_fatal octave-cli>/dev/null;
         set +o errexit
         F=texi_macros_file;
         MACROS_FILE_OPT="$(octave-cli -q -H --norc \
