@@ -281,7 +281,7 @@ dependency_check() {
     echo_cmd_fatal mkdir>/dev/null;
     echo_cmd_fatal cp>/dev/null;
     echo_cmd_fatal $O2M>/dev/null;
-    echo_cmd_fatal octave>/dev/null;
+    echo_cmd_fatal octave-cli>/dev/null;
 }
 
 # -----------------------------------------------------------------------------
