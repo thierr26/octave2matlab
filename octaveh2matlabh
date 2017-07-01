@@ -349,6 +349,7 @@ dependency_check() {
     echo_cmd_fatal basename>/dev/null;
     echo_cmd_fatal grep>/dev/null;
     echo_cmd_fatal sed>/dev/null;
+    echo_cmd_fatal head>/dev/null;
     echo_cmd_fatal tail>/dev/null;
     echo_cmd_fatal rm>/dev/null;
     echo_cmd_fatal mkdir>/dev/null;
@@ -397,6 +398,7 @@ assign_reg_exp() {
 # -----------------------------------------------------------------------------
 
 # Affects the following variables:
+#   LINE_NUM:             Line number.
 #   BLANK_LINE:           true if the current line is blank.
 #   COPYRIGHT_EXPECTED:   true if the next non blank line is supposed to be the
 #                         copyright section opening line.
@@ -405,16 +407,23 @@ assign_reg_exp() {
 #   IN_COPYRIGHT_SECTION: true if the current line is in the copyright section.
 #   IN_TEXINFO_SECTION:   true if the current line is in the Texinfo
 #                         documentation section.
+#   TEX_INFO_OPEN_LINE:   Number of the opening line for the Texinfo
+#                         documentation section.
+#   TEX_INFO_CLOS_LINE:   Number of the closing line for the Texinfo
+#                         documentation section.
 #   FUNC_SIGNATURE:       Empty while function signature line has not been
 #                         found, otherwise function signature line.
 #   FUNC_SIGNATURE_CONT:  true if function signature continues on next line.
 #   IN_FUNC_SIGNATURE:    true if the current line belongs to the function
 #                         signature.
 init_state_machine() {
+    LINE_NUM=0;
     COPYRIGHT_EXPECTED=true;
     TEXINFO_EXPECTED=false;
     IN_COPYRIGHT_SECTION=false;
     IN_TEXINFO_SECTION=false;
+    TEX_INFO_OPEN_LINE=0;
+    TEX_INFO_CLOS_LINE=0;
     FUNC_SIGNATURE=;
     FUNC_SIGNATURE_CONT=false;
     IN_FUNC_SIGNATURE=false;
@@ -428,6 +437,8 @@ init_state_machine() {
 update_state_machine() {
 
     local LL;
+
+    LINE_NUM=$((LINE_NUM+1));
 
     if [ $(echo "$L"|grep -c "$BE") -ne 0 ]; then
         BLANK_LINE=true;
@@ -456,6 +467,7 @@ update_state_machine() {
             if $TEXINFO_EXPECTED; then
                 if [ $(echo "$L"|grep -c "$TE") -ne 0 ]; then
                     IN_TEXINFO_SECTION=true;
+                    TEX_INFO_OPEN_LINE=$LINE_NUM;
                 fi;
                 TEXINFO_EXPECTED=false;
             fi;
@@ -476,6 +488,7 @@ update_state_machine() {
         TEXINFO_EXPECTED=true;
     elif $IN_TEXINFO_SECTION; then
         IN_TEXINFO_SECTION=false;
+        TEX_INFO_CLOS_LINE=$((LINE_NUM-1));
     fi;
 }
 
@@ -522,6 +535,8 @@ read_input_file() {
             L=$(printf "%s\n" "$L"|sed "s/\\\\n/\\\\\\\\\\\\\\\\n/g");
             L=$(printf "%s\n" "$L"|sed "s/\\\\t/\\\\\\\\\\\\\\\\t/g");
             L=$(printf "%s\n" "$L"|sed "s/\\\\b/\\\\\\\\\\\\\\\\b/g");
+            L=$(printf "%s\n" "$L"\
+                |sed "s/\\\\\([0-9]\+\)/\\\\\\\\\\\\\\\\\1/g");
             read_and_process_line;
         done;
     else
@@ -529,6 +544,8 @@ read_input_file() {
             L=$(printf "%s\n" "$L"|sed "s/\\\\n/\\\\\\\\\\\\\\\\n/g");
             L=$(printf "%s\n" "$L"|sed "s/\\\\t/\\\\\\\\\\\\\\\\t/g");
             L=$(printf "%s\n" "$L"|sed "s/\\\\b/\\\\\\\\\\\\\\\\b/g");
+            L=$(printf "%s\n" "$L"\
+                |sed "s/\\\\\([0-9]\+\)/\\\\\\\\\\\\\\\\\1/g");
             read_and_process_line;
         done<$SOURCE;
     fi;
@@ -680,6 +697,20 @@ find_and_check_macro_file() {
 
 # -----------------------------------------------------------------------------
 
+# Echo the Texinfo code (not usable if input is coming from standard input).
+mkinfo_input() {
+
+    echo "\input Texinfo";
+    echo "@include $MACROS_FILE_BASE_NAME";
+    echo "@setfilename ${INPUT_BASE_NAME%.*}";
+    tail -n +$((TEX_INFO_OPEN_LINE+1)) $SOURCE\
+        |head -n $((TEX_INFO_CLOS_LINE-TEX_INFO_OPEN_LINE))|sed "s/^## \?//";
+    echo "@bye";
+
+}
+
+# -----------------------------------------------------------------------------
+
 set -o nounset # Causes the script to terminate whenever an uninitialized
                # variable is used.
 
@@ -718,20 +749,32 @@ else
 
             find_and_check_macro_file;
 
-            TEXINFO="\input Texinfo\n\
+            MKINFO="$MKINFO -I $MACROS_FILE_DIR";
+            if [ -z "$SOURCE" ]; then
+                TEXINFO="\input Texinfo\n\
 @include $MACROS_FILE_BASE_NAME\n\
 @setfilename ${INPUT_BASE_NAME%.*}\n\
 "$(echo "$TEXINFO"|tail -n +3)"\n@bye";
 
-            if $MAKEINFO_INPUT_OPT; then
-                echo "$TEXINFO";
-            fi;
-            MKINFO="$MKINFO -I $MACROS_FILE_DIR";
-            if $MAKEINFO_ERR_OPT; then
-                echo "$TEXINFO"|$MKINFO --plaintext|sed "s/^/%/">>"$O";
+                if $MAKEINFO_INPUT_OPT; then
+                    echo "$TEXINFO";
+                fi;
+                if $MAKEINFO_ERR_OPT; then
+                    echo "$TEXINFO"|$MKINFO --plaintext|sed "s/^/%/">>"$O";
+                else
+                    echo "$TEXINFO"|$MKINFO --plaintext 2>/dev/null|\
+                        sed "s/^/%/">>"$O";
+                fi;
             else
-                echo "$TEXINFO"|$MKINFO --plaintext 2>/dev/null|\
-                    sed "s/^/%/">>"$O";
+                if $MAKEINFO_INPUT_OPT; then
+                    mkinfo_input;
+                fi;
+                if $MAKEINFO_ERR_OPT; then
+                    mkinfo_input|$MKINFO --plaintext|sed "s/^/%/">>"$O";
+                else
+                    mkinfo_input|$MKINFO --plaintext 2>/dev/null|\
+                        sed "s/^/%/">>"$O";
+                fi;
             fi;
             if [ -n "$COPYRIGHT" ]; then
                 echo "$COPYRIGHT">>"$O";
