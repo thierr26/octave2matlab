@@ -522,6 +522,8 @@ read_input_file() {
             L=$(printf "%s\n" "$L"|sed "s/\\\\n/\\\\\\\\\\\\\\\\n/g");
             L=$(printf "%s\n" "$L"|sed "s/\\\\t/\\\\\\\\\\\\\\\\t/g");
             L=$(printf "%s\n" "$L"|sed "s/\\\\b/\\\\\\\\\\\\\\\\b/g");
+            L=$(printf "%s\n" "$L"\
+                |sed "s/\\\\\([0-9]\+\)/\\\\\\\\\\\\\\\\\1/g");
             read_and_process_line;
         done;
     else
@@ -529,6 +531,8 @@ read_input_file() {
             L=$(printf "%s\n" "$L"|sed "s/\\\\n/\\\\\\\\\\\\\\\\n/g");
             L=$(printf "%s\n" "$L"|sed "s/\\\\t/\\\\\\\\\\\\\\\\t/g");
             L=$(printf "%s\n" "$L"|sed "s/\\\\b/\\\\\\\\\\\\\\\\b/g");
+            L=$(printf "%s\n" "$L"\
+                |sed "s/\\\\\([0-9]\+\)/\\\\\\\\\\\\\\\\\1/g");
             read_and_process_line;
         done<$SOURCE;
     fi;
