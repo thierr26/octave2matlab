@@ -38,6 +38,7 @@ function ret = test1
         fs = '\';
         fprintf('foo\nbar');
         fprintf('foo\tbar');
+        fprintf('foo\bbar');
 
     catch
         ret = false;
