@@ -368,7 +368,7 @@ sanity_check() {
     local ABS_DEST_FILE;
     if [ -n "$SOURCE" ]; then
         is_readable_file "$SOURCE";
-        if [ $(file --mime "$SOURCE"|grep -c "\<text\>") -eq 0 ]; then
+        if [ $(file -b --mime "$SOURCE"|grep -c "\<text\>") -eq 0 ]; then
             fatal "Input file does not seem to be a text file: $SOURCE";
         fi;
         ABS_SOURCE=$(readlink -f "$SOURCE");
