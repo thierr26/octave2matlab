@@ -89,10 +89,11 @@ Usage:
 
 Description:
 
-    Turn an Octave style function file (M-file) to a Matlab style file.
+    Turn an Octave style function or classdef file (M-file) to a Matlab style \
+file.
 
-    The first argument is the Octave style function file.  If it is -, then \
-input is read from standard input.
+    The first argument is the Octave style function or classdef file.  If it \
+is -, then input is read from standard input.
 
     The second argument is the directory in which $SCRIPT_NAME writes the \
 Matlab style file.  If it is omitted, then the Matlab style file is written \
@@ -107,15 +108,6 @@ section).
 function file, then in the Matlab style file the copyright section is placed \
 at the end of the file.
 
-    You may want to read the following Web pages about the conventional \
-headers for Octave functions:
-
-        - www.gnu.org/software/octave/doc/interpreter/\
-Function-Headers.html
-
-        - www.gnu.org/software/octave/doc/interpreter/\
-Documentation-Tips.html
-
     The secondary action of $SCRIPT_NAME is to slighly modify the body of the \
 function.  The modifications do not change the functional behavior of the \
 function.  The modifications are as follows:
@@ -124,8 +116,8 @@ function.  The modifications are as follows:
 is replaced with "end".  Leading blanks are preserved, trailing blanks are \
 discarded.
 
-        - Ditto for the words "endfor", "endfunction", "endif", "endswitch" \
-and "endwhile".
+        - Ditto for the words "endfor", "endfunction", "endif", "endswitch", \
+"endwhile", "endclassdef", "endproperties" and "endmethods".
 
         - On the lines that contain only a comment with one or more pound \
 signs ("#") used as comment leaders, the pound signs are substituted with a \
@@ -391,7 +383,7 @@ assign_reg_exp() {
     BE="^[ \t]*$";
     CE="^[#% \t]\+Copyright\s.\+$";
     TE="^[#% \t]\+-\*-[ \t]*texinfo[ \t]*-\*-[ \t]*$";
-    FE="^[ \t]*function\s";
+    FE="^[ \t]*\(function\)\|\(classdef\)\s";
     AE="^[#%]\+";
 }
 
@@ -558,7 +550,12 @@ read_input_file() {
 # ARGUMENT
 # $1: Function signature line.
 func_name() {
-    echo "$1"|sed "s/[ \t]*(.*$//"|sed "s/.*\(\<.\+\>\)$/\1/";
+    if [ $(echo "$1"|grep -c "^[ \t]*classdef") -ne 0 ]; then
+        echo "$1"|sed "s/^[ \t]*classdef[ \t]*\(.\+)[ \t]*\)\?//" \
+            |sed "s/[ \t]*<.\+$//";
+    else
+        echo "$1"|sed "s/[ \t]*(.*$//"|sed "s/.*\(\<.\+\>\)$/\1/";
+    fi;
 }
 
 # -----------------------------------------------------------------------------
@@ -587,6 +584,9 @@ check_func_name() {
 #   * endif
 #   * endswitch
 #   * endwhile
+#   * endclassdef
+#   * endproperties
+#   * endmethods
 #
 # ARGUMENT
 # $1: Octave style line of code.
@@ -598,6 +598,9 @@ o2m() {
         |sed "s/^\([ \t]*\)endif[ \t]*/\1$END/" \
         |sed "s/^\([ \t]*\)endswitch[ \t]*/\1$END/" \
         |sed "s/^\([ \t]*\)endwhile[ \t]*/\1$END/" \
+        |sed "s/^\([ \t]*\)endclassdef[ \t]*/\1$END/" \
+        |sed "s/^\([ \t]*\)endproperties[ \t]*/\1$END/" \
+        |sed "s/^\([ \t]*\)endmethods[ \t]*/\1$END/" \
         |sed "s/^\([ \t]*\)#\+/\1%/";
 }
 
@@ -740,9 +743,17 @@ else
     if $OVWRT_AUTHOR; then
         rm -rf "$O";
         if [ -n "$FUNC_SIGNATURE" ]; then
-            echo "$FUNC_SIGNATURE"|sed "s/[ \t]\+//g" \
-                |sed "s/^function/function /"\
-                |sed "s/=/ = /"|sed "s/,/, /g">>"$O";
+            if [ $(echo "$FUNC_SIGNATURE" \
+                    |grep -c "^[ \t]*classdef") -ne 0 ]; then
+                echo "$FUNC_SIGNATURE"|sed "s/[ \t]\+//g" \
+                    |sed "s/^classdef/classdef /"\
+                    |sed "s/(/ (/"|sed "s/)/) /"|sed "s/</ < /" \
+                    |sed "s/=/ = /"|sed "s/,/, /g">>"$O";
+            else
+                echo "$FUNC_SIGNATURE"|sed "s/[ \t]\+//g" \
+                    |sed "s/^function/function /"\
+                    |sed "s/=/ = /"|sed "s/,/, /g">>"$O";
+            fi;
         fi;
 
         if [ -n "$TEXINFO" ]; then

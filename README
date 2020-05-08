@@ -11,8 +11,9 @@ make use of Octave specific language features other than:
         - Pound sign ("#") used as comment leader on lines that contain only a
           comment.
 
-        - "end_try_catch", "endfor", "endfunction", "endif", "endswitch" and
-          "endwhile" used to close the various control constructs.
+        - "end_try_catch", "endfor", "endfunction", "endif", "endswitch",
+          "endwhile", "endclassdef", "endproperties" and "endmethods" used to
+          close the various control constructs.
 
 Their primary purpose is to turn Octave style M-file headers (with copyright
 sections and Texinfo help sections) into Matlab style headers.
@@ -73,8 +74,8 @@ Description:
         word is replaced with "end".  Leading blanks are preserved, trailing
         blanks are discarded.
 
-        - Ditto for the words "endfor", "endfunction", "endif", "endswitch"
-        and "endwhile".
+        - Ditto for the words "endfor", "endfunction", "endif", "endswitch",
+        "endwhile", "endclassdef", "endproperties" and "endmethods".
 
         - On the lines that contain only a comment with one or more pound
         signs ("#") used as comment leaders, the pound signs are substituted
