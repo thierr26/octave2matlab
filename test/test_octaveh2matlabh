@@ -279,4 +279,5 @@ else
     else
         echo "Test failed.";
     fi;
+    exit "$DIFF_EXIT_STATUS";
 fi;
