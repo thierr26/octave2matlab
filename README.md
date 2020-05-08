@@ -141,7 +141,7 @@ properly with bash as `/bin/sh`.
 
 ## Test program
 
-The test directory contains the `test_octaveh2matlabh` script which is a test
+The `test` directory contains the `test_octaveh2matlabh` script which is a test
 program for the scripts mentioned above. It is supposed to terminate with exit
 status 0 and a "Test passed." line written to standard output. A non zero exit
 status or a "Test failed." line written to standard output indicates that
