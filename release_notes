@@ -1,3 +1,12 @@
+v1.1.0
+
+* Classdef files are now supported.
+* Sequences like "\1", "\2", etc. in Octave code are now preserved.
+* Escape sequences in Octave strings are now preserved.
+* Text file detection is improved.
+
+==============================================================================
+
 v1.0.1
 
 * When invoking Octave to get the Texinfo macros file, option --norc is now
