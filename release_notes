@@ -1,3 +1,9 @@
+v1.1.1
+
+* Test program now exits with exit status 1 when failing.
+
+==============================================================================
+
 v1.1.0
 
 * Classdef files are now supported.
