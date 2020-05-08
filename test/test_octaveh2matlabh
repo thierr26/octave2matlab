@@ -247,6 +247,7 @@ SCRIPT_BASE_NAME=$(basename "$SCRIPT_PATH");
 
 process_args "$@";
 
+OCTAVEH2MATLABH=octaveh2matlabh;
 OCTAVEH2MATLABHR=octaveh2matlabh_recursive;
 if $HELP_OPT; then
     documentation $SCRIPT_BASE_NAME;
